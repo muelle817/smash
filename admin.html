@@ -719,7 +719,7 @@ window.doAppLogin=function(){
   const u=norm(document.getElementById('app-user').value);
   const p=document.getElementById('app-pass').value;
   let user=null;
-  if(u===OWNER.user&&p===OWNER.pass) user={user:'admin',name:'admin',role:'owner'};
+  if(u===OWNER.user&&p===OWNER.pass) user={user:'ale',name:'alejandro',role:'owner'};
   else{const rec=usersCache[u]; if(rec&&String(rec.pass)===p) user={user:rec.user,name:rec.name||rec.user,role:'empleado'};}
   if(!user){document.getElementById('app-login-err').classList.remove('hidden');return;}
   currentUser=user;try{sessionStorage.setItem('shellsUser',JSON.stringify(user));}catch(e){}
@@ -776,7 +776,7 @@ window.delUser=function(u){if(!confirm('¿Eliminar este usuario?'))return;db.ref
 function renderConfig(){
   const list=document.getElementById('cfg-list');if(!list)return;
   const us=Object.values(usersCache).filter(Boolean);
-  list.innerHTML = `<div class="flex items-center justify-between py-2 border-b border-white/10"><div><p class="text-sm font-medium">admin <span class="tag" style="background:rgba(143,174,75,.15);color:#8FAE4B">Dueño</span></p><p class="text-xs text-white/40">usuario: admin</p></div></div>` +
+  list.innerHTML = `<div class="flex items-center justify-between py-2 border-b border-white/10"><div><p class="text-sm font-medium">ale<span class="tag" style="background:rgba(143,174,75,.15);color:#8FAE4B">Dueño</span></p><p class="text-xs text-white/40">usuario: ale</p></div></div>` +
    (us.length?us.map(u=>`<div class="flex items-center justify-between py-2 border-b border-white/5">
       <div><p class="text-sm font-medium">${u.name||u.user}</p><p class="text-xs text-white/40">usuario: ${u.user}</p></div>
       <button class="btn btn-ghost" style="padding:.3rem .55rem" onclick="delUser('${ea(u.user)}')" title="Eliminar"><i class="fas fa-trash"></i></button>
