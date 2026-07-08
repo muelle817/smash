@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Le Smash</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+:root{--cream:#F5EFD6;--ink:#35441A;--green:#4C6425;--matcha:#8FAE4B}
+html,body{font-family:'Poppins',sans-serif;margin:0;min-height:100vh;background:var(--cream);color:var(--cream);overflow-x:hidden}
+.brand-font{font-family:'Poppins',sans-serif;font-weight:800;letter-spacing:-.02em}
+/* Video de fondo */
+#bgvid{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.bg-fallback{position:fixed;inset:0;z-index:0;background:radial-gradient(circle at 50% 30%,#4C6425,#2b3714 70%,#20290f)}
+.overlay{position:fixed;inset:0;z-index:1;background:linear-gradient(180deg,rgba(20,26,8,.55) 0%,rgba(20,26,8,.35) 40%,rgba(20,26,8,.72) 100%)}
+.content{position:relative;z-index:2}
+.fade{opacity:0;transform:translateY(26px);animation:fade 1s ease-out forwards}
+.fade.d1{animation-delay:.1s}.fade.d2{animation-delay:.3s}.fade.d3{animation-delay:.5s}.fade.d4{animation-delay:.7s}
+@keyframes fade{to{opacity:1;transform:translateY(0)}}
+.btn-main{background:var(--cream);color:var(--ink);transition:all .25s;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+.btn-main:hover{transform:translateY(-3px) scale(1.02);background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.top-bar{position:fixed;top:18px;right:18px;display:flex;gap:12px;z-index:5}
+.icon-btn{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;transition:all .25s;color:#fff;font-size:1.25rem}
+.icon-btn:hover{background:var(--matcha);color:var(--ink);transform:translateY(-3px) scale(1.06)}
+.tagline{letter-spacing:.34em}
+.mesa-chip{background:var(--matcha);color:var(--ink)}
+</style>
+</head>
+<body class="flex items-center justify-center">
+<div class="bg-fallback"></div>
+<video id="bgvid" autoplay muted loop playsinline poster="">
+  <source src="vidfonfo.mp4" type="video/mp4">
+</video>
+<div class="overlay"></div>
+
+<!-- Redes -->
+<div class="top-bar">
+  <!-- Instagram (reemplaza por tu Instagram real de Le Smash) -->
+  <a href="https://www.instagram.com/lesmash" target="_blank" aria-label="Instagram">
+    <div class="icon-btn"><i class="fab fa-instagram"></i></div>
+  </a>
+  <!-- WhatsApp (reemplaza por tu WhatsApp real) -->
+  <a href="https://wa.me/521XXXXXXXXXX?text=Hola%20Le%20Smash%2C%20quisiera%20hacer%20un%20pedido%20por%20favor." target="_blank" aria-label="WhatsApp">
+    <div class="icon-btn"><i class="fab fa-whatsapp"></i></div>
+  </a>
+</div>
+
+<main class="content w-full max-w-md mx-auto px-6 py-12 text-center min-h-screen flex flex-col items-center justify-center">
+    <div id="mesa-top" class="hidden mb-6 fade d1"><span class="mesa-chip px-5 py-2 rounded-full text-sm font-bold tracking-wide">🍽️ <span id="mesa-top-lbl">Mesa</span></span></div>
+    <img src="log.png" alt="Le Smash" class="h-44 sm:h-52 w-auto mb-4 fade d1" onerror="this.style.display='none';document.getElementById('nameText').style.display='block'">
+    <h1 id="nameText" class="brand-font text-6xl sm:text-7xl mb-4 fade d1" style="display:none;color:var(--cream)">Le Smash</h1>
+    <p class="text-white/80 text-xs sm:text-sm mb-10 tagline uppercase fade d2">Smash Burgers · Papas · Antojos</p>
+
+    <div class="w-full fade d3">
+        <a id="menu-btn" href="menucomen.html" class="btn-main block w-full py-5 rounded-2xl font-extrabold text-xl">
+            <i class="fas fa-burger mr-2"></i>Ver Menú
+        </a>
+    </div>
+
+    <p class="text-white/40 text-xs mt-12 fade d4">© Le Smash</p>
+</main>
+
+<script>
+(function(){
+  // Si el video no carga, deja el fondo de respaldo
+  const v=document.getElementById('bgvid');
+  if(v){ v.addEventListener('error',()=>v.style.display='none'); v.play&&v.play().catch(()=>{}); }
+  // Pasa el número de mesa del enlace hacia el menú del comensal
+  const p=new URLSearchParams(location.search);
+  let mesa=(p.get('mesa')||p.get('table')||'').toString().trim();
+  const btn=document.getElementById('menu-btn');
+  if(mesa){
+    btn.setAttribute('href','menucomen.html?mesa='+encodeURIComponent(mesa));
+    const label=/^\d+$/.test(mesa)?('Mesa '+mesa):mesa;
+    const mt=document.getElementById('mesa-top');if(mt)mt.classList.remove('hidden');
+    const ml=document.getElementById('mesa-top-lbl');if(ml)ml.textContent=label;
+    document.title=label+' · Le Smash';
+  }
+})();
+</script>
+</body>
+</html>
