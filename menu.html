@@ -56,7 +56,7 @@
 
 <header class="fixed top-0 left-0 right-0 z-50" style="background:rgba(245,239,214,.9);backdrop-filter:blur(10px);border-bottom:1px solid rgba(53,68,26,.15)">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="indexcomen.html" class="flex items-center gap-2 hover:opacity-70 transition-opacity" style="color:var(--ink)">
+        <a id="back-link" href="indexcomen.html" class="flex items-center gap-2 hover:opacity-70 transition-opacity" style="color:var(--ink)">
             <i class="fas fa-arrow-left text-2xl"></i>
             <span class="text-sm font-semibold tracking-wider hidden sm:block">INICIO</span>
         </a>
@@ -90,12 +90,13 @@
     </div>
     <div class="px-5 py-4 space-y-3" style="border-bottom:1px solid rgba(53,68,26,.15)">
         <div>
-            <label class="block text-xs uppercase tracking-widest mb-2" style="color:var(--green)">Nombre *</label>
-            <input id="table-input" type="text" placeholder="Tu nombre" class="inp-c w-full rounded-xl px-4 py-2 text-sm">
+            <label class="block text-xs uppercase tracking-widest mb-2" style="color:var(--green)">Mesa</label>
+            <div id="mesa-badge" class="w-full rounded-xl px-4 py-2 text-sm font-bold flex items-center gap-2 hidden" style="background:var(--ink);color:var(--cream)"><i class="fas fa-chair"></i> <span id="mesa-label">—</span></div>
+            <input id="mesa-input" type="text" inputmode="numeric" placeholder="Número de mesa (opcional)" class="inp-c w-full rounded-xl px-4 py-2 text-sm hidden">
         </div>
         <div>
-            <label class="block text-xs uppercase tracking-widest mb-2" style="color:var(--green)">Celular *</label>
-            <input id="phone-input" type="tel" inputmode="numeric" placeholder="10 dígitos" class="inp-c w-full rounded-xl px-4 py-2 text-sm">
+            <label class="block text-xs uppercase tracking-widest mb-2" style="color:var(--green)">Celular <span style="opacity:.55;text-transform:none;letter-spacing:normal">(opcional)</span></label>
+            <input id="phone-input" type="tel" inputmode="numeric" placeholder="10 dígitos (opcional)" class="inp-c w-full rounded-xl px-4 py-2 text-sm">
         </div>
     </div>
     <div id="cart-items" class="px-5 py-4 space-y-2 flex-1">
@@ -240,6 +241,43 @@ function closeModal(){
 }
 document.addEventListener('keydown',e=>{if(e.key==="Escape")closeModal();});
 
+// ==================== MESA (desde la URL: ?mesa=14) ====================
+function getMesaParam(){
+    try{
+        const p=new URLSearchParams(location.search);
+        const m=p.get('mesa')||p.get('table')||p.get('t')||'';
+        return (m||'').toString().trim();
+    }catch(e){return '';}
+}
+let MESA=getMesaParam();
+function initMesaUI(){
+    const badge=document.getElementById('mesa-badge');
+    const label=document.getElementById('mesa-label');
+    const input=document.getElementById('mesa-input');
+    if(!badge||!input)return;
+    if(MESA){
+        label.textContent='Mesa '+MESA;
+        badge.classList.remove('hidden');
+        input.classList.add('hidden');
+    }else{
+        badge.classList.add('hidden');
+        input.classList.remove('hidden');
+    }
+    // Conservar la mesa al regresar con la flecha (?mesa=14 se mantiene)
+    const back=document.getElementById('back-link');
+    if(back && MESA){
+        const base=back.getAttribute('href').split('?')[0];
+        back.setAttribute('href', base+'?mesa='+encodeURIComponent(MESA));
+    }
+}
+function currentTable(){
+    if(MESA)return 'Mesa '+MESA;
+    const input=document.getElementById('mesa-input');
+    const v=(input&&input.value.trim())||'';
+    return v?('Mesa '+v.replace(/^mesa\s*/i,'')):'Para llevar';
+}
+initMesaUI();
+
 // ==================== CARRITO ====================
 let cart=[];
 function cartKey(name,size){return name+'|'+(size||'');}
@@ -286,10 +324,9 @@ function closeCart(){document.getElementById('cart-panel').classList.remove('ope
 // ==================== ENVÍO DE PEDIDO (Firebase) ====================
 function sendOrder(){
     if(cart.length===0){showToast('Agrega algo primero 😊');return;}
-    const table=document.getElementById('table-input').value.trim();
+    const table=currentTable();
     const phone=document.getElementById('phone-input').value.trim();
-    if(!table){showToast('Escribe tu nombre 🙂');return;}
-    if(phone.replace(/\D/g,'').length<10){showToast('Escribe un celular válido (10 dígitos) 📱');return;}
+    if(phone && phone.replace(/\D/g,'').length<10){showToast('El celular debe tener 10 dígitos (o déjalo vacío) 📱');return;}
     if(typeof db==='undefined'||!db){showToast('⚠️ Falta configurar Firebase');return;}
     const newNotes=document.getElementById('order-notes').value.trim();
     const id=Date.now();
@@ -297,7 +334,7 @@ function sendOrder(){
     const norm=s=>(s||'').trim().toLowerCase();
     db.ref('orders').once('value').then(snap=>{
         const all=snap.val()||{};
-        const existing=Object.values(all).find(o=>o&&o.table&&norm(o.table)===norm(table)&&o.status!=='cobrado'&&o.status!=='cancelado');
+        const existing=Object.values(all).find(o=>o&&o.table&&norm(o.table)===norm(table)&&(o.source||'local')==='local'&&o.status!=='cobrado'&&o.status!=='cancelado');
         if(existing){
             const merged=Array.isArray(existing.items)?existing.items.map(i=>({...i})):[];
             items.forEach(c=>{
@@ -309,12 +346,11 @@ function sendOrder(){
             return db.ref('orders/'+existing.id).update({items:merged,total,status:'nuevo',phone:phone||existing.phone||'',notes})
                      .then(()=>'¡Se sumó a tu pedido anterior! 🍔');
         }else{
-            const order={id,table,phone,notes:newNotes,items,total:items.reduce((s,i)=>s+i.price*i.qty,0),status:'nuevo',createdAt:new Date().toISOString()};
+            const order={id,table,phone,notes:newNotes,items,total:items.reduce((s,i)=>s+i.price*i.qty,0),status:'nuevo',source:'local',createdAt:new Date().toISOString()};
             return db.ref('orders/'+id).set(order).then(()=>'¡Pedido enviado a cocina! 🍔');
         }
     }).then(msg=>{
         clearCart();
-        document.getElementById('table-input').value='';
         document.getElementById('phone-input').value='';
         document.getElementById('order-notes').value='';
         closeCart();

@@ -73,6 +73,11 @@ tr.low td{background:rgba(239,68,68,.08)}
 .pos-size{border:2px solid #8FAE4B;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.9rem;background:transparent;color:#8FAE4B;transition:all .15s;cursor:pointer;min-width:80px;text-align:center;line-height:1.15}
 .pos-size:hover{background:rgba(143,174,75,.15)}
 .pos-size.selected{background:#8FAE4B;color:#000;box-shadow:0 4px 14px rgba(143,174,75,.45)}
+.src-btn{border:1px solid rgba(255,255,255,.15);border-radius:.6rem;padding:.5rem .3rem;font-size:.82rem;font-weight:700;background:rgba(255,255,255,.05);color:#fff;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:.35rem}
+.src-btn.selected[data-src="local"]{background:#8FAE4B;color:#000;border-color:#8FAE4B}
+.src-btn.selected[data-src="uber"]{background:#000;color:#fff;border-color:#fff}
+.src-btn.selected[data-src="didi"]{background:#ff7a00;color:#000;border-color:#ff7a00}
+.src-pill{font-size:.66rem;font-weight:800;letter-spacing:.05em;padding:.15rem .5rem;border-radius:99px}
 .hidden{display:none!important}
 @media print{body *{visibility:hidden}#printArea,#printArea *{visibility:visible}#printArea{position:absolute;left:0;top:0;width:100%;color:#000;background:#fff}}
 </style>
@@ -217,17 +222,26 @@ tr.low td{background:rgba(239,68,68,.08)}
   <section id="tab-reportes" class="hidden">
     <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
       <h1 class="logo-font text-2xl font-bold">Reporte de gastos y ganancias</h1>
-      <div class="flex items-center gap-2">
-        <select class="inp w-auto" id="rep-range" onchange="renderReportes()">
+      <div class="flex items-center gap-2 flex-wrap">
+        <select class="inp w-auto" id="rep-range" onchange="onRepRangeChange()">
           <option value="today">Hoy</option>
           <option value="week">Últimos 7 días</option>
           <option value="month">Este mes</option>
+          <option value="year">Este año</option>
           <option value="all">Todo</option>
         </select>
+        <div class="flex items-center gap-1 rounded-lg px-2 py-1" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)">
+          <i class="fas fa-calendar-days text-white/40 text-xs"></i>
+          <input type="date" class="inp" id="rep-from" style="width:auto;padding:.3rem .4rem" onchange="onRepCustom()" title="Desde">
+          <span class="text-white/40 text-xs">a</span>
+          <input type="date" class="inp" id="rep-to" style="width:auto;padding:.3rem .4rem" onchange="onRepCustom()" title="Hasta">
+          <button class="btn btn-ghost hidden" id="rep-clear" style="padding:.3rem .5rem" onclick="clearRepCustom()" title="Quitar rango personalizado"><i class="fas fa-xmark"></i></button>
+        </div>
         <button class="btn btn-ghost" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
         <button class="btn btn-ghost" onclick="logoutOwner()"><i class="fas fa-right-from-bracket"></i> Salir</button>
       </div>
     </div>
+    <p id="rep-periodo" class="text-white/40 text-xs mb-3"></p>
 
     <div id="printArea">
     <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-5">
@@ -248,6 +262,10 @@ tr.low td{background:rgba(239,68,68,.08)}
         <h3 class="font-semibold mb-3 text-white/70">Por método de pago</h3>
         <div id="rep-metodos"></div>
       </div>
+    </div>
+    <div class="card p-4 mb-5">
+      <h3 class="font-semibold mb-3 text-white/70"><i class="fas fa-motorcycle gold"></i> Ventas por origen (Local / Uber / Didi)</h3>
+      <div id="rep-origen"></div>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
       <div class="card p-4">
@@ -515,9 +533,17 @@ tr.low td{background:rgba(239,68,68,.08)}
         <div id="pos-items" class="flex-1 overflow-y-auto px-4 py-2"></div>
       </div>
       <div class="w-full md:w-80 flex flex-col bg-black/30 border-t md:border-t-0 border-white/10 min-h-0">
-        <div class="p-3 border-b border-white/10 grid grid-cols-2 gap-2">
-          <input id="pos-name" class="inp" placeholder="Nombre / Mesa *" oninput="posValidate()">
-          <input id="pos-phone" class="inp" placeholder="Celular *" inputmode="numeric" oninput="posValidate()">
+        <div class="p-3 border-b border-white/10">
+          <p class="text-white/40 text-[11px] uppercase tracking-wider mb-1">Origen del pedido</p>
+          <div class="grid grid-cols-3 gap-2 mb-2" id="pos-source-btns">
+            <button type="button" class="src-btn selected" data-src="local" onclick="posSetSource('local')"><i class="fas fa-store"></i> Local</button>
+            <button type="button" class="src-btn" data-src="uber" onclick="posSetSource('uber')"><i class="fas fa-car"></i> Uber</button>
+            <button type="button" class="src-btn" data-src="didi" onclick="posSetSource('didi')"><i class="fas fa-motorcycle"></i> Didi</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="pos-name" class="inp" placeholder="Nombre / Mesa *" oninput="posValidate()">
+            <input id="pos-phone" class="inp" placeholder="Celular *" inputmode="numeric" oninput="posValidate()">
+          </div>
         </div>
         <div id="pos-ticket" class="flex-1 overflow-y-auto p-3 space-y-1" style="min-height:80px"></div>
         <div class="p-3 border-t border-white/10">
@@ -603,6 +629,21 @@ tr.low td{background:rgba(239,68,68,.08)}
     <div class="flex gap-2 mt-5">
       <button class="btn btn-ghost flex-1" onclick="closeModal('fondoModal')">Cancelar</button>
       <button class="btn btn-gold flex-1" onclick="saveFondo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal corte de caja -->
+<div class="modal-bg" id="corteModal">
+  <div class="card p-6 w-full max-w-sm max-h-[92vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="logo-font text-xl font-bold"><i class="fas fa-receipt gold"></i> Corte de caja</h3>
+      <button class="text-white/50 hover:text-white text-2xl leading-none" onclick="closeModal('corteModal')">×</button>
+    </div>
+    <div id="corte-body" class="text-sm"></div>
+    <div class="flex gap-2 mt-5">
+      <button class="btn btn-ghost flex-1" onclick="closeModal('corteModal')">Cerrar</button>
+      <button class="btn btn-gold flex-1" onclick="printCorteTicket()"><i class="fas fa-print"></i> Imprimir ticket</button>
     </div>
   </div>
 </div>
@@ -698,6 +739,13 @@ const uid=()=>Date.now()+Math.floor(Math.random()*1000);
 const norm=s=>(s||'').toString().trim().toLowerCase();
 const itemLabel=i=>i.name+(i.size?' ('+i.size+')':'');
 const extrasSum=i=>(i.extras||[]).reduce((s,e)=>s+(+e.price||0),0);
+/* ===== Origen del pedido (Local / Uber / Didi) ===== */
+const SOURCES=['local','uber','didi'];
+const sourceOf=o=>{const s=(o&&o.source)||'local';return SOURCES.includes(s)?s:'local';};
+function sourceLabel(s){s=SOURCES.includes(s)?s:'local';return s==='uber'?'UBER':s==='didi'?'DIDI':'LOCAL';}
+function sourceStyle(s){s=SOURCES.includes(s)?s:'local';return s==='uber'?'background:#000;color:#fff;border:1px solid #fff':s==='didi'?'background:#ff7a00;color:#000':'background:rgba(143,174,75,.2);color:#8FAE4B';}
+// Badge solo para Uber/Didi (Local se deja limpio para no saturar la mesa).
+function sourceTag(o){const s=sourceOf(o);if(s==='local')return '';return `<span class="src-pill" style="${sourceStyle(s)}">${sourceLabel(s)}</span>`;}
 function lineDiscount(i){
   const d=i.discount; if(!d||!d.type)return 0;
   const base=(+i.price||0)*(+i.qty||0);
@@ -954,9 +1002,14 @@ function switchTab(t){
 function inRange(v,range){
   if(range==='all')return true;
   const day=dayStr(v);if(!day)return false;
+  if(range&&typeof range==='object'){                 // rango personalizado {from,to}
+    const f=range.from||'0000-01-01', t=range.to||'9999-12-31';
+    return day>=f&&day<=t;
+  }
   const today=todayStr();
   if(range==='today')return day===today;
   if(range==='month')return day.slice(0,7)===today.slice(0,7);
+  if(range==='year')return day.slice(0,4)===today.slice(0,4);
   if(range==='week'){const wa=tzDateStr(new Date(Date.now()-6*86400000));return day>=wa&&day<=today;}
   return true;
 }
@@ -994,8 +1047,8 @@ function renderCocina(){
     const deliv=allDelivered(o);
     return `<div class="card p-4 ${o.status==='nuevo'?'pulse':''}" style="${o.status==='nuevo'?'border-color:rgba(239,68,68,.5)':(deliv?'border-color:rgba(34,197,94,.4)':'')}">
       <div class="flex items-center justify-between mb-1 flex-wrap gap-1">
-        <span class="font-bold text-lg">${o.table||'Sin mesa'}${o.customerName?` <span class="text-white/50 text-sm font-normal">· ${o.customerName}</span>`:''}</span>
-        <div class="flex gap-1 flex-wrap">${o.tableReady?`<span class="tag" style="background:rgba(59,130,246,.2);color:#93c5fd"><i class="fas fa-flag-checkered"></i> Mesa lista</span>`:''}${paid?`<span class="tag" style="background:rgba(34,197,94,.2);color:#86efac">Cobrado</span>`:''}<span class="tag tag-${o.status}">${o.status}</span></div>
+        <span class="font-bold text-lg">${o.table||'Sin mesa'}</span>
+        <div class="flex gap-1 flex-wrap items-center">${sourceTag(o)}${o.tableReady?`<span class="tag" style="background:rgba(59,130,246,.2);color:#93c5fd"><i class="fas fa-flag-checkered"></i> Mesa lista</span>`:''}${paid?`<span class="tag" style="background:rgba(34,197,94,.2);color:#86efac">Cobrado</span>`:''}<span class="tag tag-${o.status}">${o.status}</span></div>
       </div>
       <p class="text-white/40 text-xs mb-3"><i class="far fa-clock"></i> ${elapsed(o.createdAt)} · #${String(o.id).slice(-4)}${o.phone?` · <i class="fas fa-phone"></i> ${o.phone}`:''}</p>
       <div class="text-sm mb-3">${itemsHtml}</div>
@@ -1003,7 +1056,7 @@ function renderCocina(){
       ${deliv?`<p class="text-xs mb-2" style="color:#86efac"><i class="fas fa-circle-check"></i> Todo entregado — la mesa quedó libre</p>`:''}
       ${o.notes?`<p class="text-xs bg-yellow-500/10 text-yellow-200 rounded-lg p-2 mb-3"><i class="fas fa-note-sticky"></i> ${o.notes}</p>`:''}
       <p class="text-right gold font-bold mb-3">${money(o.total)}</p>
-      <div class="flex gap-2 flex-wrap">${next}<button class="btn btn-ghost" onclick="openPOSedit(${o.id})" title="Editar comanda"><i class="fas fa-pen"></i></button><button class="btn btn-ghost" onclick="dismissKitchen(${o.id})" title="Quitar de cocina"><i class="fas fa-eye-slash"></i></button><button class="btn btn-ghost" onclick="setStatus(${o.id},'cancelado')" title="Cancelar"><i class="fas fa-xmark"></i></button></div>
+      <div class="flex gap-2 flex-wrap">${next}<button class="btn btn-ghost" onclick="reprintComanda(${o.id})" title="Imprimir comanda"><i class="fas fa-print"></i></button><button class="btn btn-ghost" onclick="openPOSedit(${o.id})" title="Editar comanda"><i class="fas fa-pen"></i></button><button class="btn btn-ghost" onclick="dismissKitchen(${o.id})" title="Quitar de cocina"><i class="fas fa-eye-slash"></i></button><button class="btn btn-ghost" onclick="setStatus(${o.id},'cancelado')" title="Cancelar"><i class="fas fa-xmark"></i></button></div>
     </div>`;
   }).join('');
   updateBadge('badge-cocina',orders.length);
@@ -1017,8 +1070,10 @@ window.setStatus=function(id,status){
 window.openPrepTime=function(id){document.getElementById('prep-id').value=id;openModal('prepModal');};
 window.doPrepare=function(mins){
   const id=+document.getElementById('prep-id').value;if(!id)return;
+  const o=ordersCache[id];
   db.ref('orders/'+id).update({status:'preparando',prepMinutes:mins,prepStartedAt:new Date().toISOString()});
   closeModal('prepModal');showToast('En preparación · '+mins+' min');
+  if(o)printComanda(Object.assign({},o),mins);   // imprime la comanda para la cocina (58mm B/N)
 };
 // Avanza el estado de un platillo: pendiente → listo (recoger) → entregado.
 window.cycleItem=function(orderId,idx){
@@ -1071,6 +1126,14 @@ function paymentsInRange(range){
   });
   return out;
 }
+/* Totales por origen (Local/Uber/Didi): dinero de los pagos, platillos de las ventas cobradas. */
+function sourceTotals(range){
+  const agg={local:{money:0,orders:new Set(),dishes:0},uber:{money:0,orders:new Set(),dishes:0},didi:{money:0,orders:new Set(),dishes:0}};
+  paymentsInRange(range).forEach(p=>{const o=ordersCache[p.orderId];const s=sourceOf(o);agg[s].money+=(+p.amount||0);agg[s].orders.add(p.orderId);});
+  getOrders().filter(o=>o.status==='cobrado'&&o.paidAt&&inRange(o.paidAt,range)).forEach(o=>{const s=sourceOf(o);(o.items||[]).forEach(i=>{agg[s].dishes+=(+i.qty||0);});});
+  return agg;
+}
+function srcPlain(range){const a=sourceTotals(range);const out={};SOURCES.forEach(k=>{out[k]={money:Math.round(a[k].money*100)/100,orders:a[k].orders.size,dishes:a[k].dishes};});return out;}
 function deductInventory(order){
   const deduct={};
   (order.items||[]).forEach(it=>{
@@ -1111,7 +1174,7 @@ function renderCaja(){
     return `
     <div class="card p-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="font-bold">${o.table||'Sin mesa'}</span><span class="tag tag-${o.status}">${o.status}</span>
+        <span class="font-bold">${o.table||'Sin mesa'}</span><div class="flex gap-1 items-center">${sourceTag(o)}<span class="tag tag-${o.status}">${o.status}</span></div>
       </div>
       <p class="text-white/40 text-xs mb-2">#${String(o.id).slice(-4)} · ${o.items.reduce((s,i)=>s+i.qty,0)} art.${o.phone?` · <i class="fas fa-phone"></i> ${o.phone}`:''}</p>
       <div class="text-xs text-white/60 mb-3">${o.items.map(i=>i.qty+'× '+itemLabel(i)+((+i.paidQty||0)>0?' ('+(+i.paidQty||0)+' pagadas)':'')+(i.note?' ('+i.note+')':'')+((i.extras||[]).length?' +'+i.extras.map(e=>e.name).join(', +'):'')+(i.discount&&i.discount.type?' ['+discLabel(i.discount)+']':'')).join(', ')}</div>
@@ -1252,6 +1315,7 @@ function registerSplitPayment(){
   if(fully){closeModal('payModal');showToast('¡Cobrado por completo! '+money(order.total));}
   else{showToast('Pago registrado: '+money(amount)+' · Restante '+money(Math.round(((+order.total||0)-paidAmount)*100)/100));openPay(id);}
 }
+let lastCorte=null;
 function corteCaja(){
   const pays=paymentsInRange('today');
   const c=getOrders().filter(o=>o.status==='cobrado'&&o.paidAt&&inRange(o.paidAt,'today'));
@@ -1262,11 +1326,79 @@ function corteCaja(){
   const gas=getExp().filter(e=>inRange(e.fecha,'today')).reduce((s,e)=>s+(+e.monto),0);
   const cajon=Math.round((cashFloatCache+efe-gas)*100)/100;
   const by=userLabel();
+  const src=srcPlain('today');
   // Guarda el corte para el reporte (quién lo hizo).
   const cid=uid();
-  db.ref('cortes/'+cid).set({id:cid,ts:new Date().toISOString(),fecha:todayStr(),user:by,pedidos:c.length,tot,efe,tar,tra,gas,fondo:cashFloatCache,cajon});
-  alert(`CORTE DE CAJA — ${todayStr().split('-').reverse().join('/')}\nCajero: ${by}\n\nPedidos cobrados: ${c.length}\nEfectivo (ventas): ${money(efe)}\nTarjeta: ${money(tar)}\nTransferencia: ${money(tra)}\nGastos del día: ${money(gas)}\n────────────────\nVENTA TOTAL: ${money(tot)}\n\nFondo inicial: ${money(cashFloatCache)}\nEfectivo esperado en cajón: ${money(cajon)}\n(fondo + efectivo − gastos)`);
+  const data={id:cid,ts:new Date().toISOString(),fecha:todayStr(),user:by,pedidos:c.length,tot,efe,tar,tra,gas,fondo:cashFloatCache,cajon,src};
+  db.ref('cortes/'+cid).set(data);
+  lastCorte=data;
+  renderCorteModal(data);
+  openModal('corteModal');
 }
+function renderCorteModal(d){
+  const el=document.getElementById('corte-body');if(!el)return;
+  const row=(l,v,cls)=>`<div class="flex justify-between py-0.5"><span class="text-white/60">${l}</span><span class="${cls||''}">${v}</span></div>`;
+  const srcRows=SOURCES.map(k=>(d.src&&d.src[k])?row(sourceLabel(k),money(d.src[k].money)+' <span class="text-white/40 text-xs">('+d.src[k].orders+' ped · '+d.src[k].dishes+' plat)</span>'):'').join('');
+  el.innerHTML=`
+    <p class="text-white/40 text-xs mb-2">${d.fecha.split('-').reverse().join('/')} · Cajero: <b>${d.user||'—'}</b></p>
+    ${row('Pedidos cobrados',d.pedidos)}
+    ${row('Efectivo (ventas)',money(d.efe),'text-green-400')}
+    ${row('Tarjeta',money(d.tar))}
+    ${row('Transferencia',money(d.tra))}
+    ${row('Gastos del día',money(d.gas),'text-red-400')}
+    <div class="border-t border-white/10 my-2"></div>
+    ${row('<b>VENTA TOTAL</b>','<b class="gold">'+money(d.tot)+'</b>')}
+    <div class="border-t border-white/10 my-2"></div>
+    <p class="text-white/40 text-[11px] uppercase tracking-wider mb-1">Por origen</p>
+    ${srcRows}
+    <div class="border-t border-white/10 my-2"></div>
+    ${row('Fondo inicial',money(d.fondo))}
+    ${row('Efectivo esperado en cajón',money(d.cajon),'text-green-400 font-bold')}
+    <p class="text-white/30 text-[11px] mt-1">(fondo + efectivo − gastos)</p>`;
+}
+function corteTicketHTML(d){
+  const row=(l,v)=>`<div class="row"><span>${l}</span><span>${v}</span></div>`;
+  const srcLines=SOURCES.map(k=>(d.src&&d.src[k])?`<div class="row"><span>${sourceLabel(k)}</span><span>${money(d.src[k].money)} (${d.src[k].orders})</span></div>`:'').join('');
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Corte ${d.fecha}</title><style>
+    @page{size:58mm auto;margin:0}
+    *{margin:0;padding:0;box-sizing:border-box;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{width:58mm;padding:2mm 2mm 8mm;font-family:'Courier New',monospace;background:#fff;font-size:12px}
+    .name{text-align:center;font-size:16px;font-weight:bold}
+    .hd{text-align:center;font-size:13px;font-weight:bold;letter-spacing:1px;margin:1mm 0}
+    .meta{text-align:center;font-size:11px;margin-bottom:2mm}
+    .sep{border-top:1px dashed #000;margin:2mm 0}
+    .dsep{border-top:3px solid #000;margin:2mm 0}
+    .row{display:flex;justify-content:space-between;font-size:12px;padding:.4mm 0}
+    .tot{display:flex;justify-content:space-between;font-size:15px;font-weight:bold}
+    .lbl{text-align:center;font-size:11px;font-weight:bold;margin:1mm 0}
+    .ft{text-align:center;font-size:10px;margin-top:3mm}
+  </style></head><body onload="setTimeout(function(){try{window.print();}catch(e){}},350)">
+    <div class="name">${esc(BIZ.name)}</div>
+    <div class="hd">CORTE DE CAJA</div>
+    <div class="meta">${esc(fmtDateTime(d.ts))}<br>Cajero: ${esc(d.user||'—')}</div>
+    <div class="dsep"></div>
+    ${row('Pedidos cobrados',d.pedidos)}
+    ${row('Efectivo',money(d.efe))}
+    ${row('Tarjeta',money(d.tar))}
+    ${row('Transferencia',money(d.tra))}
+    ${row('Gastos','-'+money(d.gas))}
+    <div class="dsep"></div>
+    <div class="tot"><span>VENTA TOTAL</span><span>${money(d.tot)}</span></div>
+    <div class="sep"></div>
+    <div class="lbl">POR ORIGEN ($ y pedidos)</div>
+    ${srcLines}
+    <div class="sep"></div>
+    ${row('Fondo inicial',money(d.fondo))}
+    <div class="tot"><span>EN CAJÓN</span><span>${money(d.cajon)}</span></div>
+    <div class="ft">(fondo + efectivo − gastos)<br>Le Smash</div>
+  </body></html>`;
+}
+window.printCorteTicket=function(){
+  if(!lastCorte){showToast('Primero haz el corte');return;}
+  const w=window.open('','_blank','width=320,height=600');
+  if(!w){showToast('Permite ventanas emergentes para imprimir');return;}
+  w.document.write(corteTicketHTML(lastCorte));w.document.close();
+};
 const DENOMS=[1000,500,200,100,50,20,10,5,2,1,0.5];
 const denomKey=d=>'d'+String(d).replace('.','_');
 const denomLabel=d=>d>=20?('Billete $'+d):('Moneda $'+(d===0.5?'0.50':d));
@@ -1417,11 +1549,65 @@ window.printTicket=function(id){
   w.document.write(ticketHTML(o));w.document.close();
 };
 
+/* ============ COMANDA DE COCINA (58mm, blanco y negro) ============ */
+function esc(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function buildComandaHTML(o,mins){
+  const itemsHtml=(o.items||[]).map(i=>{
+    const note=i.note?`<div class="nt">▸ ${esc(i.note)}</div>`:'';
+    const extras=(i.extras||[]).map(e=>`<div class="ex">+ ${esc(e.name)}</div>`).join('');
+    return `<div class="it"><div class="ln"><span class="q">${i.qty}×</span> ${esc(itemLabel(i))}</div>${note}${extras}</div>`;
+  }).join('');
+  const gen=o.notes?`<div class="gen">NOTA GENERAL:<br>${esc(o.notes)}</div>`:'';
+  const src=sourceOf(o);
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Comanda ${String(o.id).slice(-4)}</title><style>
+    @page{size:58mm auto;margin:0}
+    *{margin:0;padding:0;box-sizing:border-box;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{width:58mm;padding:2mm 2mm 8mm;font-family:'Courier New',monospace;background:#fff}
+    .hd{text-align:center;font-weight:bold;font-size:15px;letter-spacing:1px;border-bottom:3px solid #000;padding-bottom:2mm;margin-bottom:2mm}
+    .mesa{text-align:center;font-size:22px;font-weight:bold;margin:1mm 0}
+    .meta{text-align:center;font-size:12px;line-height:1.5;margin-bottom:2mm}
+    .src{display:inline-block;border:2px solid #000;padding:0 4mm;font-size:14px;font-weight:bold;margin-top:1mm}
+    .prep{font-weight:bold}
+    .sep{border-top:2px dashed #000;margin:2mm 0}
+    .it{border-bottom:1px dashed #000;padding:1.6mm 0}
+    .ln{font-size:15px;font-weight:bold;line-height:1.25}
+    .q{font-size:17px}
+    .nt{font-size:12px;font-weight:bold;padding-left:5mm;margin-top:.5mm}
+    .ex{font-size:12px;padding-left:5mm}
+    .gen{font-size:12px;font-weight:bold;border:1px solid #000;padding:1.5mm;margin-top:2mm}
+    .ft{text-align:center;font-size:11px;margin-top:3mm}
+  </style></head><body onload="setTimeout(function(){try{window.print();}catch(e){}},350)">
+    <div class="hd">COMANDA · COCINA</div>
+    <div class="mesa">${esc(o.table||'Sin mesa')}</div>
+    <div class="meta">
+      #${String(o.id).slice(-4)} · ${esc(fmtDateTime(o.createdAt))}<br>
+      <span class="src">${sourceLabel(src)}</span>${mins?` <span class="prep">· PREP ${mins} MIN</span>`:''}
+    </div>
+    <div class="sep"></div>
+    ${itemsHtml}
+    ${gen}
+    <div class="ft">Impreso ${esc(fmtTime())}</div>
+  </body></html>`;
+}
+function printComanda(o,mins){
+  try{
+    const w=window.open('','_blank','width=320,height=600');
+    if(!w){showToast('Permite ventanas emergentes para imprimir la comanda');return;}
+    w.document.write(buildComandaHTML(o,mins));w.document.close();
+  }catch(e){console.error('No se pudo imprimir la comanda:',e);}
+}
+// Reimprimir comanda a mano desde la cocina.
+window.reprintComanda=function(id){const o=ordersCache[id];if(!o)return;printComanda(Object.assign({},o),o.prepMinutes||0);};
+
 /* ============ POS: Nueva orden / Editar (personal) ============ */
 const EXTRAS_PRESET=['queso','carne','tocino','papas','cebolla','Jamón y Queso'];
-let posCart=[], posCat='alimentos', posSel={}, posEditId=null, extraLine=null;
+let posCart=[], posCat='alimentos', posSel={}, posEditId=null, extraLine=null, posSource='local';
 function posKey(n,s){return n+'|'+(s||'');}
-function posReset(){posCart=[];posCat='alimentos';posSel={};posEditId=null;
+window.posSetSource=function(s){
+  posSource=(s==='uber'||s==='didi')?s:'local';
+  document.querySelectorAll('#pos-source-btns .src-btn').forEach(b=>b.classList.toggle('selected',b.dataset.src===posSource));
+};
+function posReset(){posCart=[];posCat='alimentos';posSel={};posEditId=null;posSetSource('local');
   document.getElementById('pos-name').value='';document.getElementById('pos-phone').value='';
   const s=document.getElementById('pos-search');if(s)s.value='';posValidate();}
 window.openPOS=function(){
@@ -1433,6 +1619,7 @@ window.openPOS=function(){
 window.openPOSedit=function(id){
   const o=ordersCache[id]; if(!o)return;
   posReset(); posEditId=id;
+  posSetSource(o.source||'local');
   posCart=(o.items||[]).map(i=>({name:i.name,price:+i.price,size:i.size||'',qty:i.qty,note:i.note||'',extras:(i.extras||[]).map(e=>({name:e.name,price:+e.price||0})),discount:i.discount&&i.discount.type?{...i.discount}:null}));
   document.getElementById('pos-name').value=o.table||'';
   document.getElementById('pos-phone').value=o.phone||'';
@@ -1561,27 +1748,28 @@ function renderPOS(){
 window.posSend=function(){
   if(!posCart.length){showToast('Agrega productos');return;}
   const name=document.getElementById('pos-name').value.trim();
-  if(!name){showToast('Escribe el nombre');posValidate();return;}
+  if(!name){showToast('Escribe el nombre / mesa');posValidate();return;}
   const phone=document.getElementById('pos-phone').value.trim();
-  if(!phone){showToast('Escribe el teléfono');posValidate();return;}
+  if(posSource==='local'&&!phone){showToast('Escribe el teléfono');posValidate();return;}
   const items=posCart.map(i=>{const o={name:i.name,price:+i.price,size:i.size||'',qty:i.qty,note:i.note||'',extras:(i.extras||[]).map(e=>({name:e.name,price:+e.price||0}))};if(i.discount&&i.discount.type)o.discount={label:i.discount.label||'',type:i.discount.type,value:+i.discount.value||0};return o;});
   const total=orderTotal(items);
   const by=userLabel();
   // Modo edición: actualiza la orden existente (misma comanda).
   if(posEditId){
-    db.ref('orders/'+posEditId).update({items,total,table:name,phone,editadoPor:by});
+    db.ref('orders/'+posEditId).update({items,total,table:name,phone,source:posSource,editadoPor:by});
     closeModal('posModal');showToast('Orden actualizada ✓');posReset();return;
   }
   const id=Date.now();
+  const src=posSource;
   db.ref('orders').once('value').then(snap=>{
     const all=snap.val()||{};
-    const ex=Object.values(all).find(o=>o&&o.table&&norm(o.table)===norm(name)&&o.status!=='cobrado'&&o.status!=='cancelado');
+    const ex=Object.values(all).find(o=>o&&o.table&&norm(o.table)===norm(name)&&(o.source||'local')===src&&o.status!=='cobrado'&&o.status!=='cancelado');
     if(ex){
       const merged=Array.isArray(ex.items)?ex.items.map(i=>({...i})):[];
       items.forEach(c=>{const f=merged.find(i=>posKey(i.name,i.size)===posKey(c.name,c.size));if(f){f.qty+=c.qty;if(c.note)f.note=c.note;if(c.extras&&c.extras.length)f.extras=(f.extras||[]).concat(c.extras);}else merged.push({...c});});
-      return db.ref('orders/'+ex.id).update({items:merged,total:orderTotal(merged),status:'nuevo',phone:phone||ex.phone||''}).then(()=>'Se sumó al pedido de '+ex.table+' 🍞');
+      return db.ref('orders/'+ex.id).update({items:merged,total:orderTotal(merged),status:'nuevo',phone:phone||ex.phone||'',source:ex.source||src}).then(()=>'Se sumó al pedido de '+ex.table+' 🍞');
     }
-    return db.ref('orders/'+id).set({id,table:name,phone,notes:'',items,total,status:'nuevo',createdAt:new Date().toISOString(),createdBy:by}).then(()=>'¡Orden enviada a cocina! 🍞');
+    return db.ref('orders/'+id).set({id,table:name,phone,notes:'',items,total,status:'nuevo',source:src,createdAt:new Date().toISOString(),createdBy:by}).then(()=>'¡Orden enviada a cocina! 🍞');
   }).then(msg=>{posReset();closeModal('posModal');showToast(msg);})
    .catch(e=>{console.error(e);showToast('Error al enviar la orden');});
 };
@@ -1752,8 +1940,42 @@ window.saveCosts=function(){
 };
 
 /* ============ REPORTES ============ */
+/* Rango efectivo: si hay fechas en el calendario (Desde/Hasta) manda el rango personalizado;
+   si no, manda el preset del menú (Hoy / 7 días / Este mes / Este año / Todo). */
+function repRange(){
+  const from=(document.getElementById('rep-from')||{}).value||'';
+  const to=(document.getElementById('rep-to')||{}).value||'';
+  if(from||to)return {from:from||'0000-01-01',to:to||'9999-12-31'};
+  return (document.getElementById('rep-range')||{}).value||'today';
+}
+function repPeriodoLabel(){
+  const from=(document.getElementById('rep-from')||{}).value||'';
+  const to=(document.getElementById('rep-to')||{}).value||'';
+  const fx=d=>d?d.split('-').reverse().join('/'):'';
+  if(from||to)return 'Periodo: '+(from?fx(from):'inicio')+' – '+(to?fx(to):'hoy');
+  const preset=(document.getElementById('rep-range')||{}).value||'today';
+  const map={today:'Hoy',week:'Últimos 7 días',month:'Este mes',year:'Este año',all:'Todo el historial'};
+  return 'Periodo: '+(map[preset]||preset);
+}
+function updateRepClear(){
+  const has=((document.getElementById('rep-from')||{}).value||'')||((document.getElementById('rep-to')||{}).value||'');
+  const b=document.getElementById('rep-clear');if(b)b.classList.toggle('hidden',!has);
+  const sel=document.getElementById('rep-range');if(sel)sel.style.opacity=has?'.5':'1';
+}
+window.onRepRangeChange=function(){   // al elegir un preset, limpia el rango personalizado
+  const f=document.getElementById('rep-from'),t=document.getElementById('rep-to');
+  if(f)f.value='';if(t)t.value='';
+  updateRepClear();renderReportes();
+};
+window.onRepCustom=function(){updateRepClear();renderReportes();};
+window.clearRepCustom=function(){
+  const f=document.getElementById('rep-from'),t=document.getElementById('rep-to');
+  if(f)f.value='';if(t)t.value='';
+  updateRepClear();renderReportes();
+};
 function renderReportes(){
-  const range=document.getElementById('rep-range').value;
+  const range=repRange();
+  const perEl=document.getElementById('rep-periodo');if(perEl)perEl.textContent=repPeriodoLabel();
   const costs=getCosts();
   const sales=getOrders().filter(o=>o.status==='cobrado'&&o.paidAt&&inRange(o.paidAt,range));
   const pays=paymentsInRange(range);
@@ -1822,6 +2044,8 @@ function renderReportes(){
   document.getElementById('rep-metodos').innerHTML=[['Efectivo',met.efectivo,'#16a34a'],['Tarjeta',met.tarjeta,'#2563eb'],['Transferencia',met.transferencia,'#a855f7']].map(([n,v,c])=>`
     <div class="mb-2"><div class="flex justify-between text-sm mb-1"><span>${n}</span><span class="font-semibold">${money(v)} <span class="text-white/40 text-xs">${Math.round(v/totMet*100)}%</span></span></div>
     <div class="h-1.5 bg-white/10 rounded-full"><div class="h-1.5 rounded-full" style="width:${v/totMet*100}%;background:${c}"></div></div></div>`).join('');
+  // ventas por origen (Local/Uber/Didi)
+  renderOrigen(range);
   // ventas por hora
   renderVentasHora(pays);
   // gastos
@@ -1848,6 +2072,24 @@ function renderVentasHora(pays){
   cont.innerHTML=hours.map(h=>`
     <div class="mb-2"><div class="flex justify-between text-sm mb-1"><span>${fmtH(h)} – ${fmtH((h+1)%24)}</span><span class="gold font-semibold">${money(byH[h])}</span></div>
     <div class="h-1.5 bg-white/10 rounded-full"><div class="h-1.5 rounded-full" style="width:${byH[h]/maxv*100}%;background:${h===topH?'#8FAE4B':'rgba(143,174,75,.5)'}"></div></div></div>`).join('');
+}
+/* ---- Ventas por origen (Local/Uber/Didi) ---- */
+function renderOrigen(range){
+  const cont=document.getElementById('rep-origen');if(!cont)return;
+  const a=sourceTotals(range);
+  const totMoney=SOURCES.reduce((s,k)=>s+a[k].money,0)||1;
+  const barColor={local:'#8FAE4B',uber:'#e5e7eb',didi:'#ff7a00'};
+  cont.innerHTML=SOURCES.map(k=>{
+    const m=a[k].money, ord=a[k].orders.size, dish=a[k].dishes, pct=Math.round(m/totMoney*100);
+    return `<div class="mb-3">
+      <div class="flex justify-between items-center text-sm mb-1">
+        <span class="src-pill" style="${sourceStyle(k)}">${sourceLabel(k)}</span>
+        <span class="gold font-semibold">${money(m)} <span class="text-white/40 text-xs">${pct}%</span></span>
+      </div>
+      <div class="h-1.5 bg-white/10 rounded-full mb-1"><div class="h-1.5 rounded-full" style="width:${m/totMoney*100}%;background:${barColor[k]}"></div></div>
+      <div class="flex gap-4 text-xs text-white/50"><span><i class="fas fa-receipt"></i> ${ord} ${ord===1?'pedido':'pedidos'}</span><span><i class="fas fa-burger"></i> ${dish} ${dish===1?'platillo':'platillos'}</span></div>
+    </div>`;
+  }).join('');
 }
 
 /* ---- Config ventas: editar método / cancelar venta ---- */
