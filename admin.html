@@ -1050,7 +1050,7 @@ function renderCocina(){
         <span class="font-bold text-lg">${o.table||'Sin mesa'}</span>
         <div class="flex gap-1 flex-wrap items-center">${sourceTag(o)}${o.tableReady?`<span class="tag" style="background:rgba(59,130,246,.2);color:#93c5fd"><i class="fas fa-flag-checkered"></i> Mesa lista</span>`:''}${paid?`<span class="tag" style="background:rgba(34,197,94,.2);color:#86efac">Cobrado</span>`:''}<span class="tag tag-${o.status}">${o.status}</span></div>
       </div>
-      <p class="text-white/40 text-xs mb-3"><i class="far fa-clock"></i> ${elapsed(o.createdAt)} · #${String(o.id).slice(-4)}${o.phone?` · <i class="fas fa-phone"></i> ${o.phone}`:''}</p>
+      <p class="text-white/40 text-xs mb-3"><i class="far fa-clock"></i> ${elapsed(o.createdAt)} · #${String(o.id).slice(-4)}${(+o.personas>1)?` · <i class="fas fa-users"></i> ${o.personas} pers`:''}${o.phone?` · <i class="fas fa-phone"></i> ${o.phone}`:''}</p>
       <div class="text-sm mb-3">${itemsHtml}</div>
       ${prepInfo}
       ${deliv?`<p class="text-xs mb-2" style="color:#86efac"><i class="fas fa-circle-check"></i> Todo entregado — la mesa quedó libre</p>`:''}
@@ -1176,7 +1176,7 @@ function renderCaja(){
       <div class="flex items-center justify-between mb-2">
         <span class="font-bold">${o.table||'Sin mesa'}</span><div class="flex gap-1 items-center">${sourceTag(o)}<span class="tag tag-${o.status}">${o.status}</span></div>
       </div>
-      <p class="text-white/40 text-xs mb-2">#${String(o.id).slice(-4)} · ${o.items.reduce((s,i)=>s+i.qty,0)} art.${o.phone?` · <i class="fas fa-phone"></i> ${o.phone}`:''}</p>
+      <p class="text-white/40 text-xs mb-2">#${String(o.id).slice(-4)} · ${o.items.reduce((s,i)=>s+i.qty,0)} art.${(+o.personas>1)?` · <i class="fas fa-users"></i> ${o.personas} pers`:''}${o.phone?` · <i class="fas fa-phone"></i> ${o.phone}`:''}</p>
       <div class="text-xs text-white/60 mb-3">${o.items.map(i=>i.qty+'× '+itemLabel(i)+((+i.paidQty||0)>0?' ('+(+i.paidQty||0)+' pagadas)':'')+(i.note?' ('+i.note+')':'')+((i.extras||[]).length?' +'+i.extras.map(e=>e.name).join(', +'):'')+(i.discount&&i.discount.type?' ['+discLabel(i.discount)+']':'')).join(', ')}</div>
       ${partial?`<div class="text-xs mb-2 flex justify-between"><span class="text-green-400">Pagado ${money(paid)}</span><span class="gold font-semibold">Restante ${money(bal)}</span></div>`:''}
       <div class="flex items-center justify-between mb-2">
@@ -1193,7 +1193,7 @@ function renderCaja(){
   const tot=Math.round(paysHoy.reduce((s,p)=>s+p.amount,0)*100)/100;
   const efe=Math.round(paysHoy.filter(p=>p.method==='efectivo').reduce((s,p)=>s+p.amount,0)*100)/100;
   const cobradosHoy=getOrders().filter(o=>o.status==='cobrado'&&o.paidAt&&inRange(o.paidAt,'today'));
-  const personasHoy=new Set(getOrders().filter(o=>o.createdAt&&inRange(o.createdAt,'today')&&o.status!=='cancelado').map(o=>norm(o.table))).size;
+  const personasHoy=getOrders().filter(o=>o.createdAt&&inRange(o.createdAt,'today')&&o.status!=='cancelado').reduce((s,o)=>s+(+o.personas||1),0);
   const gastosHoy=getExp().filter(e=>inRange(e.fecha,'today')).reduce((s,e)=>s+(+e.monto),0);
   document.getElementById('caja-hoy').textContent=money(tot);
   document.getElementById('caja-count').textContent=cobradosHoy.length;
@@ -2023,8 +2023,8 @@ function renderReportes(){
       <button class="btn btn-ghost" style="padding:.25rem .5rem" onclick="shareTicket(${o.id})" title="PDF"><i class="fab fa-whatsapp text-green-400"></i></button>
       <button class="btn btn-ghost" style="padding:.25rem .5rem" onclick="printTicket(${o.id})" title="Imprimir"><i class="fas fa-print"></i></button>
     </div></td></tr>`).join('');
-  // personas (clientes distintos que compraron en el periodo)
-  document.getElementById('rep-personas').textContent=new Set(sales.map(o=>norm(o.table))).size;
+  // personas (headcount real: suma de personas por pedido en el periodo)
+  document.getElementById('rep-personas').textContent=sales.reduce((s,o)=>s+(+o.personas||1),0);
   // clientes por día
   const byDay={};
   sales.forEach(o=>{const d=dayStr(o.paidAt);if(!d)return;(byDay[d]=byDay[d]||new Set()).add(norm(o.table));});

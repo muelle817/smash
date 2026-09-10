@@ -26,6 +26,13 @@ html,body{font-family:'Poppins',sans-serif;margin:0;min-height:100vh;background:
 .icon-btn:hover{background:var(--matcha);color:var(--ink);transform:translateY(-3px) scale(1.06)}
 .tagline{letter-spacing:.34em}
 .mesa-chip{background:var(--matcha);color:var(--ink)}
+.pmodal-bg{position:fixed;inset:0;z-index:20;background:rgba(20,26,8,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px}
+.pmodal-bg.show{display:flex}
+.pmodal-card{background:var(--cream);border:2px solid var(--ink);border-radius:24px;max-width:360px;width:100%;padding:26px 22px;text-align:center;color:var(--ink)}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pgrid button{background:var(--ink);color:var(--cream);border:none;border-radius:12px;padding:14px 0;font-weight:800;font-size:1.15rem;cursor:pointer;transition:transform .12s}
+.pgrid button:hover{transform:scale(1.05);background:var(--green)}
+.pclose{margin-top:14px;background:transparent;border:none;color:rgba(53,68,26,.55);font-size:.85rem;cursor:pointer}
 </style>
 </head>
 <body class="flex items-center justify-center">
@@ -54,31 +61,53 @@ html,body{font-family:'Poppins',sans-serif;margin:0;min-height:100vh;background:
     <p class="text-white/80 text-xs sm:text-sm mb-10 tagline uppercase fade d2">Smash Burgers · Papas · Antojos</p>
 
     <div class="w-full fade d3">
-        <a id="menu-btn" href="menucomen.html" class="btn-main block w-full py-5 rounded-2xl font-extrabold text-xl">
+        <button id="menu-btn" onclick="askPersonas()" class="btn-main block w-full py-5 rounded-2xl font-extrabold text-xl">
             <i class="fas fa-burger mr-2"></i>Ver Menú
-        </a>
+        </button>
     </div>
 
     <p class="text-white/40 text-xs mt-12 fade d4">© Le Smash</p>
 </main>
+
+<!-- ¿Cuántas personas? -->
+<div id="pmodal" class="pmodal-bg">
+  <div class="pmodal-card">
+    <div style="font-size:2.6rem;line-height:1">👥</div>
+    <h2 class="brand-font" style="font-size:1.55rem;margin:.4rem 0 .2rem">¿Cuántas personas<br>van a ordenar?</h2>
+    <p style="font-size:.85rem;color:rgba(53,68,26,.7);margin:0 0 1.1rem">Cada persona hará su pedido por separado.</p>
+    <div class="pgrid" id="pgrid"></div>
+    <button onclick="closePmodal()" class="pclose">Cancelar</button>
+  </div>
+</div>
 
 <script>
 (function(){
   // Si el video no carga, deja el fondo de respaldo
   const v=document.getElementById('bgvid');
   if(v){ v.addEventListener('error',()=>v.style.display='none'); v.play&&v.play().catch(()=>{}); }
-  // Pasa el número de mesa del enlace hacia el menú del comensal
+  // Lee el número de mesa del enlace (?mesa=12) y lo conserva
   const p=new URLSearchParams(location.search);
-  let mesa=(p.get('mesa')||p.get('table')||'').toString().trim();
-  const btn=document.getElementById('menu-btn');
-  if(mesa){
-    btn.setAttribute('href','menucomen.html?mesa='+encodeURIComponent(mesa));
-    const label=/^\d+$/.test(mesa)?('Mesa '+mesa):mesa;
+  window.__mesa=(p.get('mesa')||p.get('table')||'').toString().trim();
+  if(window.__mesa){
+    const label=/^\d+$/.test(window.__mesa)?('Mesa '+window.__mesa):window.__mesa;
     const mt=document.getElementById('mesa-top');if(mt)mt.classList.remove('hidden');
     const ml=document.getElementById('mesa-top-lbl');if(ml)ml.textContent=label;
     document.title=label+' · Le Smash';
   }
+  const grid=document.getElementById('pgrid');
+  if(grid)grid.innerHTML=[1,2,3,4,5,6,7,8].map(n=>'<button onclick="pickPersonas('+n+')">'+n+'</button>').join('');
 })();
+// Construye el enlace al menú conservando mesa y agregando personas
+function menuURL(personas){
+  let u='menucomen.html';const params=[];
+  if(window.__mesa)params.push('mesa='+encodeURIComponent(window.__mesa));
+  if(personas)params.push('personas='+personas);
+  if(params.length)u+='?'+params.join('&');
+  return u;
+}
+function askPersonas(){document.getElementById('pmodal').classList.add('show');}
+function closePmodal(){document.getElementById('pmodal').classList.remove('show');}
+function pickPersonas(n){location.href=menuURL(n);}
 </script>
 </body>
 </html>
